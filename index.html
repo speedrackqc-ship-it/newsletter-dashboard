@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#1F1B17" />
+<title>오늘의 뉴스레터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F4ED;
+    --bg-elev: #FFFFFF;
+    --ink: #1F1B17;
+    --ink-soft: #5A544A;
+    --ink-muted: #8B857B;
+    --rule: rgba(31, 27, 23, 0.12);
+    --rule-soft: rgba(31, 27, 23, 0.06);
+    --accent: #A23E3E;
+    --accent-bg: rgba(162, 62, 62, 0.08);
+    --serif: "Gowun Batang", "Noto Serif KR", "Times New Roman", serif;
+    --sans: "IBM Plex Sans KR", "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1A1714; --bg-elev: #232019; --ink: #ECE7DC; --ink-soft: #B5AE9F;
+      --ink-muted: #7F786C; --rule: rgba(236, 231, 220, 0.12); --rule-soft: rgba(236, 231, 220, 0.05);
+      --accent: #D87878; --accent-bg: rgba(216, 120, 120, 0.1);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.6; min-height: 100vh; padding: 24px 20px 80px; }
+  .container { max-width: 720px; margin: 0 auto; }
+  header { padding: 24px 0 32px; border-bottom: 1px solid var(--rule); margin-bottom: 28px; }
+  .masthead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-muted); font-weight: 500; }
+  .date-block { font-family: var(--serif); margin-bottom: 14px; }
+  .date-num { font-size: clamp(46px, 12vw, 72px); line-height: 0.95; letter-spacing: -0.02em; }
+  .date-meta { margin-top: 8px; display: flex; gap: 14px; font-size: 13px; color: var(--ink-soft); }
+  .date-meta strong { color: var(--accent); font-weight: 500; }
+  .stats { display: flex; gap: 24px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--rule-soft); }
+  .stat { flex: 1; }
+  .stat-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 4px; }
+  .stat-value { font-family: var(--serif); font-size: 28px; line-height: 1; }
+  .filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 28px; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .pill { flex-shrink: 0; padding: 7px 14px; border: 1px solid var(--rule); border-radius: 999px; background: transparent; color: var(--ink-soft); font-family: var(--sans); font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+  .pill:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .pill.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .date-section { margin-bottom: 36px; }
+  .date-divider { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .date-divider-text { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-muted); font-weight: 500; }
+  .date-divider-line { flex: 1; height: 1px; background: var(--rule); }
+  .card { padding: 22px 0; border-bottom: 1px solid var(--rule-soft); cursor: pointer; transition: opacity 0.2s; }
+  .card:hover .card-subject { color: var(--accent); }
+  .card.read { opacity: 0.55; }
+  .card-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; color: var(--ink-muted); }
+  .nl-badge { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); font-weight: 500; }
+  .nl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .meta-sep { color: var(--rule); }
+  .unread-mark { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: auto; }
+  .card.read .unread-mark { display: none; }
+  .card-subject { font-family: var(--serif); font-size: clamp(19px, 2.4vw, 22px); line-height: 1.35; margin-bottom: 10px; letter-spacing: -0.005em; transition: color 0.15s; }
+  .card-preview { font-size: 14px; line-height: 1.65; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .reader { position: fixed; inset: 0; background: var(--bg); z-index: 100; overflow-y: auto; padding: 24px 20px 60px; animation: fadeIn 0.2s; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .reader-inner { max-width: 680px; margin: 0 auto; }
+  .reader-close { background: transparent; border: 1px solid var(--rule); color: var(--ink-soft); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; padding: 8px 14px; border-radius: 999px; cursor: pointer; margin-bottom: 28px; }
+  .reader-close:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .reader-meta { margin-bottom: 14px; font-size: 12px; color: var(--ink-muted); display: flex; align-items: center; gap: 10px; }
+  .reader-subject { font-family: var(--serif); font-size: clamp(26px, 4vw, 36px); line-height: 1.25; margin-bottom: 28px; letter-spacing: -0.01em; }
+  .reader-body { font-size: 15.5px; line-height: 1.8; white-space: pre-wrap; word-wrap: break-word; }
+  .reader-body a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .reader-actions { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--rule); display: flex; gap: 10px; }
+  .reader-actions button { background: transparent; border: 1px solid var(--rule); color: var(--ink-soft); font-size: 13px; padding: 9px 16px; border-radius: 6px; cursor: pointer; }
+  .reader-actions button:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .state { text-align: center; padding: 80px 20px; color: var(--ink-muted); font-family: var(--serif); font-size: 17px; font-style: italic; }
+  .state-sub { margin-top: 12px; font-family: var(--sans); font-size: 13px; font-style: normal; }
+  .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--rule); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--rule); text-align: center; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); }
+  @media (max-width: 480px) { body { padding: 16px 16px 60px; } .stats { gap: 16px; } .stat-value { font-size: 24px; } .card { padding: 18px 0; } }
+  body, .card-subject, .reader-subject { word-break: keep-all; overflow-wrap: break-word; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="masthead"><span>오늘의 뉴스레터</span><span id="today-display"></span></div>
+    <div class="date-block">
+      <div class="date-num" id="date-num"></div>
+      <div class="date-meta"><span id="date-full"></span><span>·</span><span id="date-weekday"></span></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">전체</div><div class="stat-value" id="stat-total">—</div></div>
+      <div class="stat"><div class="stat-label">안 읽음</div><div class="stat-value" id="stat-unread">—</div></div>
+      <div class="stat"><div class="stat-label">오늘 도착</div><div class="stat-value" id="stat-today">—</div></div>
+    </div>
+  </header>
+  <div class="filters" id="filters"></div>
+  <main id="content"><div class="state"><div class="loading"></div><div class="state-sub" style="margin-top: 16px;">뉴스레터를 불러오는 중…</div></div></main>
+  <footer>Curated for you · Updated every 30 minutes</footer>
+</div>
+<div id="reader-mount"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://scckrdxdokgnacyfmtjn.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_HbMfrg-jRAhbH6tTX9ZlzA_lLgRgvpk';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let newsletters = [], issues = [], filter = { newsletter: 'all', readStatus: 'all' };
+function getReadIds() { try { return new Set(JSON.parse(localStorage.getItem('readIds') || '[]')); } catch { return new Set(); } }
+function setRead(id) { const s = getReadIds(); s.add(id); localStorage.setItem('readIds', JSON.stringify([...s])); }
+const WEEKDAYS = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+function formatHeader() {
+  const now = new Date();
+  document.getElementById('date-num').textContent = now.getDate();
+  document.getElementById('date-full').textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월`;
+  document.getElementById('date-weekday').innerHTML = `<strong>${WEEKDAYS[now.getDay()]}</strong>`;
+  document.getElementById('today-display').textContent = `${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+}
+function dateLabel(dateStr) {
+  const d = new Date(dateStr), today = new Date(), yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a, b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  if (sameDay(d, today)) return '오늘';
+  if (sameDay(d, yesterday)) return '어제';
+  return `${d.getMonth()+1}월 ${d.getDate()}일 ${WEEKDAYS[d.getDay()].slice(0,1)}요일`;
+}
+function timeLabel(dateStr) {
+  const d = new Date(dateStr); const h = d.getHours(), m = d.getMinutes();
+  return `${h<12?'오전':'오후'} ${h%12||12}:${String(m).padStart(2,'0')}`;
+}
+function dateKey(dateStr) { const d = new Date(dateStr); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+function cleanPreview(text) { if (!text) return ''; return text.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').replace(/[ \t]+/g,' ').replace(/[ \t]+\n/g,'\n').trim().slice(0, 280); }
+function cleanBody(text) { if (!text) return '내용을 표시할 수 없어요.'; return text.replace(/\r/g,'').replace(/\n{4,}/g,'\n\n\n').trim(); }
+async function load() {
+  try {
+    const [{ data: nls, error: e1 }, { data: iss, error: e2 }] = await Promise.all([
+      sb.from('newsletters').select('*').eq('is_active', true).order('name'),
+      sb.from('issues').select('id, newsletter_id, subject, body_text, body_html, received_at').order('received_at', { ascending: false }).limit(200)
+    ]);
+    if (e1 || e2) throw (e1 || e2);
+    newsletters = nls || [];
+    issues = (iss || []).map(i => ({ ...i, newsletter: newsletters.find(n => n.id === i.newsletter_id), is_read: getReadIds().has(i.id) }));
+    renderFilters(); render(); updateStats();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('content').innerHTML = `<div class="state">연결에 문제가 있어요.<div class="state-sub">콘솔(F12)에서 에러 확인하거나 URL/Key 설정을 다시 봐주세요.</div></div>`;
+  }
+}
+function updateStats() {
+  const readIds = getReadIds(), todayKey = dateKey(new Date());
+  document.getElementById('stat-total').textContent = issues.length;
+  document.getElementById('stat-unread').textContent = issues.filter(i => !readIds.has(i.id)).length;
+  document.getElementById('stat-today').textContent = issues.filter(i => dateKey(i.received_at) === todayKey).length;
+}
+function renderFilters() {
+  const readIds = getReadIds(), filtersEl = document.getElementById('filters');
+  const pills = [
+    { id: 'all', label: '전체', count: issues.length, type: 'newsletter' },
+    { id: 'unread', label: '안 읽음', count: issues.filter(i => !readIds.has(i.id)).length, type: 'readStatus' },
+  ];
+  for (const n of newsletters) {
+    const count = issues.filter(i => i.newsletter_id === n.id).length;
+    if (count === 0) continue;
+    pills.push({ id: n.id, label: n.name, count, color: n.color, type: 'newsletter' });
+  }
+  filtersEl.innerHTML = pills.map(p => {
+    const active = (p.type === 'newsletter' && filter.newsletter === p.id) || (p.type === 'readStatus' && p.id === 'unread' && filter.readStatus === 'unread');
+    const dot = p.color ? `<span class="pill-dot" style="background:${p.color}"></span>` : '';
+    return `<button class="pill ${active ? 'active' : ''}" data-type="${p.type}" data-id="${p.id}">${dot}${p.label} <span style="opacity:.6">${p.count}</span></button>`;
+  }).join('');
+  filtersEl.querySelectorAll('.pill').forEach(el => {
+    el.addEventListener('click', () => {
+      const { type, id } = el.dataset;
+      if (type === 'readStatus') filter.readStatus = (filter.readStatus === 'unread') ? 'all' : 'unread';
+      else filter.newsletter = id;
+      renderFilters(); render();
+    });
+  });
+}
+function render() {
+  const readIds = getReadIds();
+  let list = issues.map(i => ({...i, is_read: readIds.has(i.id)}));
+  if (filter.newsletter !== 'all') list = list.filter(i => i.newsletter_id === filter.newsletter);
+  if (filter.readStatus === 'unread') list = list.filter(i => !i.is_read);
+  if (list.length === 0) {
+    document.getElementById('content').innerHTML = `<div class="state">오늘은 조용하네요.<div class="state-sub">새 메일이 도착하면 30분 안에 여기 나타나요.</div></div>`;
+    return;
+  }
+  const groups = new Map();
+  for (const i of list) {
+    const k = dateKey(i.received_at);
+    if (!groups.has(k)) groups.set(k, { label: dateLabel(i.received_at), items: [] });
+    groups.get(k).items.push(i);
+  }
+  let html = '';
+  for (const [, group] of groups) {
+    html += `<section class="date-section"><div class="date-divider"><span class="date-divider-text">${group.label}</span><span class="date-divider-line"></span></div>`;
+    for (const i of group.items) {
+      html += `<article class="card ${i.is_read ? 'read' : ''}" data-id="${i.id}">
+        <div class="card-meta">
+          <span class="nl-badge"><span class="nl-dot" style="background:${i.newsletter?.color || '#888'}"></span>${i.newsletter?.name || '알 수 없음'}</span>
+          <span class="meta-sep">·</span><span>${timeLabel(i.received_at)}</span><span class="unread-mark"></span>
+        </div>
+        <h2 class="card-subject">${escapeHtml(i.subject)}</h2>
+        <p class="card-preview">${escapeHtml(cleanPreview(i.body_text))}</p>
+      </article>`;
+    }
+    html += `</section>`;
+  }
+  document.getElementById('content').innerHTML = html;
+  document.querySelectorAll('.card').forEach(el => { el.addEventListener('click', () => openReader(el.dataset.id)); });
+}
+function openReader(id) {
+  const issue = issues.find(i => i.id === id);
+  if (!issue) return;
+  setRead(id);
+  const mount = document.getElementById('reader-mount');
+  mount.innerHTML = `<div class="reader" id="reader"><div class="reader-inner">
+    <button class="reader-close" id="reader-close">← 닫기</button>
+    <div class="reader-meta"><span class="nl-badge"><span class="nl-dot" style="background:${issue.newsletter?.color || '#888'}"></span>${issue.newsletter?.name || ''}</span><span class="meta-sep">·</span><span>${dateLabel(issue.received_at)} ${timeLabel(issue.received_at)}</span></div>
+    <h1 class="reader-subject">${escapeHtml(issue.subject)}</h1>
+    <div class="reader-body">${linkify(escapeHtml(cleanBody(issue.body_text)))}</div>
+    ${issue.body_html ? `<div class="reader-actions"><button id="view-original">원본 HTML로 보기</button></div>` : ''}
+  </div></div>`;
+  document.body.style.overflow = 'hidden';
+  document.getElementById('reader-close').onclick = closeReader;
+  document.addEventListener('keydown', escClose);
+  if (issue.body_html) {
+    document.getElementById('view-original').onclick = () => {
+      const blob = new Blob([issue.body_html], { type: 'text/html;charset=utf-8' });
+      window.open(URL.createObjectURL(blob), '_blank');
+    };
+  }
+  render(); updateStats(); renderFilters();
+}
+function closeReader() { document.getElementById('reader-mount').innerHTML = ''; document.body.style.overflow = ''; document.removeEventListener('keydown', escClose); }
+function escClose(e) { if (e.key === 'Escape') closeReader(); }
+function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+function linkify(text) { return text.replace(/(https?:\/\/[^\s<]+)/g, url => `<a href="${url}" target="_blank" rel="noopener">${url}</a>`); }
+formatHeader(); load();
+setInterval(load, 5 * 60 * 1000);
+</script>
+</body>
+</html>
