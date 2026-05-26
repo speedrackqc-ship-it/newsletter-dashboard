@@ -136,7 +136,7 @@ dist
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
-
+.env
 # Vite files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
