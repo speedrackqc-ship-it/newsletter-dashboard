@@ -219,22 +219,29 @@ function openReader(id) {
   if (!issue) return;
   setRead(id);
   const mount = document.getElementById('reader-mount');
+
+  const hasHtml = !!issue.body_html;
+  const bodyMarkup = hasHtml
+    ? `<iframe id="content-frame" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" style="width:100%; border:none; min-height:600px; background:white; border-radius:8px;"></iframe>`
+    : `<div class="reader-body">${escapeHtml(cleanBody(issue.body_text, issue.body_html))}</div>`;
+
   mount.innerHTML = `<div class="reader" id="reader"><div class="reader-inner">
     <button class="reader-close" id="reader-close">← 닫기</button>
     <div class="reader-meta"><span class="nl-badge"><span class="nl-dot" style="background:${issue.newsletter?.color || '#888'}"></span>${issue.newsletter?.name || ''}</span><span class="meta-sep">·</span><span>${dateLabel(issue.received_at)} ${timeLabel(issue.received_at)}</span></div>
     <h1 class="reader-subject">${escapeHtml(issue.subject)}</h1>
-    <div class="reader-body">${linkify(escapeHtml(cleanBody(issue.body_text)))}</div>
-    ${issue.body_html ? `<div class="reader-actions"><button id="view-original">원본 HTML로 보기</button></div>` : ''}
+    ${bodyMarkup}
   </div></div>`;
+
+  if (hasHtml) {
+    const iframe = document.getElementById('content-frame');
+    iframe.srcdoc = issue.body_html;
+    const resize = () => { try { iframe.style.height = (iframe.contentDocument.body.scrollHeight + 40) + 'px'; } catch(e) {} };
+    iframe.onload = () => { resize(); setTimeout(resize, 500); setTimeout(resize, 1500); };
+  }
+
   document.body.style.overflow = 'hidden';
   document.getElementById('reader-close').onclick = closeReader;
   document.addEventListener('keydown', escClose);
-  if (issue.body_html) {
-    document.getElementById('view-original').onclick = () => {
-      const blob = new Blob([issue.body_html], { type: 'text/html;charset=utf-8' });
-      window.open(URL.createObjectURL(blob), '_blank');
-    };
-  }
   render(); updateStats(); renderFilters();
 }
 function closeReader() { document.getElementById('reader-mount').innerHTML = ''; document.body.style.overflow = ''; document.removeEventListener('keydown', escClose); }
