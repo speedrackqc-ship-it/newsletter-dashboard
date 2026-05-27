@@ -163,6 +163,21 @@ function cleanBody(text, html) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
+  async function load() {
+  try {
+    const [{ data: nls, error: e1 }, { data: iss, error: e2 }] = await Promise.all([
+      sb.from('newsletters').select('*').eq('is_active', true).order('name'),
+      sb.from('issues').select('id, newsletter_id, subject, body_text, body_html, received_at').order('received_at', { ascending: false }).limit(200)
+    ]);
+    if (e1 || e2) throw (e1 || e2);
+    newsletters = nls || [];
+    issues = (iss || []).map(i => ({ ...i, newsletter: newsletters.find(n => n.id === i.newsletter_id), is_read: getReadIds().has(i.id) }));
+    renderFilters(); render(); updateStats();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('content').innerHTML = `<div class="state">연결에 문제가 있어요.<div class="state-sub">콘솔(F12)에서 에러 확인하거나 URL/Key 설정을 다시 봐주세요.</div></div>`;
+  }
+}
 function updateStats() {
   const readIds = getReadIds(), todayKey = dateKey(new Date());
   document.getElementById('stat-total').textContent = issues.length;
