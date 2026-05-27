@@ -87,7 +87,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="masthead"><span>오늘의 뉴스레터</span><span><button id="print-btn" style="background:transparent;border:none;color:var(--ink-muted);font-size:11px;letter-spacing:0.18em;cursor:pointer;text-transform:uppercase;font-family:inherit;padding:4px 8px;margin-right:14px;">📄 오늘 인쇄</button><span id="today-display"></span></span></div>
+    <div class="masthead"><span>오늘의 뉴스레터</span><span><button id="print-btn" style="background:transparent;border:none;color:var(--ink-muted);font-size:11px;letter-spacing:0.18em;cursor:pointer;text-transform:uppercase;font-family:inherit;padding:4px 8px;margin-right:14px;">📄 인쇄</button><span id="today-display"></span></span></div>
     <div class="date-block">
       <div class="date-num" id="date-num"></div>
       <div class="date-meta"><span id="date-full"></span><span>·</span><span id="date-weekday"></span></div>
@@ -246,25 +246,70 @@ function openReader(id) {
 }
 function closeReader() { document.getElementById('reader-mount').innerHTML = ''; document.body.style.overflow = ''; document.removeEventListener('keydown', escClose); }
 function escClose(e) { if (e.key === 'Escape') closeReader(); }
-function printToday() {
-  const todayKey = dateKey(new Date());
-  const todayIssues = issues.filter(i => dateKey(i.received_at) === todayKey).sort((a,b) => new Date(a.received_at) - new Date(b.received_at));
-  if (todayIssues.length === 0) { alert('오늘 도착한 메일이 없습니다.'); return; }
+function openPrintPicker() {
+  const datesWithCount = {};
+  issues.forEach(i => { const k = dateKey(i.received_at); datesWithCount[k] = (datesWithCount[k] || 0) + 1; });
+  const datesSorted = Object.keys(datesWithCount).sort((a, b) => {
+    const da = a.split('-').map(Number), db = b.split('-').map(Number);
+    return new Date(db[0], db[1]-1, db[2]) - new Date(da[0], da[1]-1, da[2]);
+  });
+  if (datesSorted.length === 0) { alert('인쇄할 메일이 없습니다.'); return; }
+
+  const todayK = dateKey(new Date());
+  const yesterdayK = (() => { const d = new Date(); d.setDate(d.getDate()-1); return dateKey(d); })();
+  const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+
+  const quickHtml = datesSorted.slice(0, 7).map(d => {
+    const count = datesWithCount[d];
+    const [y, m, day] = d.split('-').map(Number);
+    const dateObj = new Date(y, m-1, day);
+    let label = (d === todayK) ? '오늘' : (d === yesterdayK) ? '어제' : `${m}월 ${day}일`;
+    return `<button class="quick-date" data-datekey="${d}" style="padding:6px 12px;background:transparent;border:1px solid var(--rule);color:var(--ink-soft);border-radius:999px;cursor:pointer;font-family:inherit;font-size:12px;display:inline-flex;align-items:center;gap:6px;">${label} <span style="opacity:0.5;">${count}</span></button>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'print-picker';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `<div style="background:var(--bg);border:1px solid var(--rule);border-radius:12px;padding:28px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:var(--sans);"><h3 style="font-family:var(--serif);font-size:22px;margin:0 0 8px;color:var(--ink);font-weight:400;">인쇄할 날짜 선택</h3><p style="font-size:13px;color:var(--ink-soft);margin:0 0 20px;line-height:1.5;">선택한 날짜에 도착한 메일을 모아서 인쇄해요</p><div style="margin-bottom:14px;"><input type="date" id="date-picker-input" value="${todayISO}" style="width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:6px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit;color-scheme:light dark;" /></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px;">${quickHtml}</div><div style="display:flex;gap:8px;justify-content:flex-end;"><button id="cancel-print" style="padding:10px 18px;background:transparent;border:1px solid var(--rule);color:var(--ink-soft);border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">취소</button><button id="confirm-print" style="padding:10px 18px;background:var(--ink);color:var(--bg);border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;">📄 인쇄</button></div></div>`;
+  document.body.appendChild(modal);
+
+  modal.querySelectorAll('.quick-date').forEach(btn => {
+    btn.onclick = () => {
+      const dk = btn.dataset.datekey;
+      const [y, m, day] = dk.split('-').map(Number);
+      modal.querySelector('#date-picker-input').value = `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    };
+  });
+  modal.querySelector('#cancel-print').onclick = () => modal.remove();
+  modal.querySelector('#confirm-print').onclick = () => {
+    const iso = modal.querySelector('#date-picker-input').value;
+    if (!iso) return;
+    const [y, m, day] = iso.split('-').map(Number);
+    modal.remove();
+    printDate(`${y}-${m}-${day}`);
+  };
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+}
+
+function printDate(targetDateKey) {
+  const dayIssues = issues.filter(i => dateKey(i.received_at) === targetDateKey).sort((a, b) => new Date(a.received_at) - new Date(b.received_at));
+  if (dayIssues.length === 0) { alert('그 날짜에 도착한 메일이 없습니다.'); return; }
   const w = window.open('', '_blank', 'width=900,height=1200');
   if (!w) { alert('팝업이 차단됐어요. 브라우저 팝업을 허용해주세요.'); return; }
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 ${WEEKDAYS[now.getDay()]}`;
-  const sections = todayIssues.map(issue => {
+  const [y, m, day] = targetDateKey.split('-').map(Number);
+  const targetDate = new Date(y, m-1, day);
+  const dateStr = `${y}년 ${m}월 ${day}일 ${WEEKDAYS[targetDate.getDay()]}`;
+  const sections = dayIssues.map(issue => {
     const time = timeLabel(issue.received_at);
     return `<article class="newsletter"><header class="nl-header"><div class="nl-source"><span class="nl-dot" style="background:${issue.newsletter?.color || '#888'}"></span><span class="nl-name">${escapeHtml(issue.newsletter?.name || '')}</span><span class="nl-time">${time}</span></div><h2 class="nl-subject">${escapeHtml(issue.subject)}</h2></header><div class="nl-body">${issue.body_html || '<pre>' + escapeHtml(issue.body_text || '') + '</pre>'}</div></article>`;
   }).join('');
-  w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>오늘의 뉴스레터 - ${dateStr}</title><style>@page { size: A4; margin: 18mm; } * { box-sizing: border-box; } body { font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #1f1b17; line-height: 1.6; margin: 0; padding: 24px; max-width: 800px; margin: 0 auto; background: #f7f4ed; } .doc-header { border-bottom: 2px solid #1f1b17; padding-bottom: 16px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: baseline; } .doc-title { font-size: 24px; font-weight: 700; } .doc-meta { color: #888; font-size: 13px; } .print-controls { position: fixed; top: 20px; right: 20px; z-index: 99; } .print-btn { padding: 10px 24px; background: #1f1b17; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: inherit; } .newsletter { margin-bottom: 48px; padding-bottom: 32px; border-bottom: 1px solid #ccc; page-break-inside: avoid; break-inside: avoid; background: white; padding: 24px; border-radius: 8px; } .newsletter:last-child { border-bottom: none; } .nl-header { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #eee; } .nl-source { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; margin-bottom: 8px; } .nl-dot { width: 8px; height: 8px; border-radius: 50%; } .nl-name { font-weight: 500; color: #1f1b17; } .nl-time { color: #888; } .nl-subject { font-size: 22px; font-weight: 600; line-height: 1.3; margin: 0; } .nl-body { font-size: 14px; word-break: keep-all; overflow-wrap: break-word; } .nl-body img { max-width: 100%; height: auto; } .nl-body table { max-width: 100% !important; } .nl-body pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; } @media print { .print-controls { display: none; } body { max-width: none; padding: 0; background: white; } .newsletter { background: white; padding: 0; } }</style></head><body><div class="print-controls"><button class="print-btn" onclick="window.print()">🖨️ 인쇄하기</button></div><div class="doc-header"><div><div class="doc-title">오늘의 뉴스레터</div><div class="doc-meta">${dateStr} · 총 ${todayIssues.length}통</div></div></div>${sections}</body></html>`);
+  w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>뉴스레터 모음 - ${dateStr}</title><style>@page { size: A4; margin: 18mm; } * { box-sizing: border-box; } body { font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: #1f1b17; line-height: 1.6; margin: 0; padding: 24px; max-width: 800px; margin: 0 auto; background: #f7f4ed; } .doc-header { border-bottom: 2px solid #1f1b17; padding-bottom: 16px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: baseline; } .doc-title { font-size: 24px; font-weight: 700; } .doc-meta { color: #888; font-size: 13px; } .print-controls { position: fixed; top: 20px; right: 20px; z-index: 99; } .print-btn { padding: 10px 24px; background: #1f1b17; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: inherit; } .newsletter { margin-bottom: 24px; page-break-inside: avoid; break-inside: avoid; background: white; padding: 24px; border-radius: 8px; border: 1px solid #ddd; } .nl-header { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #eee; } .nl-source { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; margin-bottom: 8px; } .nl-dot { width: 8px; height: 8px; border-radius: 50%; } .nl-name { font-weight: 500; color: #1f1b17; } .nl-time { color: #888; } .nl-subject { font-size: 22px; font-weight: 600; line-height: 1.3; margin: 0; } .nl-body { font-size: 14px; word-break: keep-all; overflow-wrap: break-word; } .nl-body img { max-width: 100%; height: auto; } .nl-body table { max-width: 100% !important; } .nl-body pre { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; } @media print { .print-controls { display: none; } body { max-width: none; padding: 0; background: white; } .newsletter { padding: 0; border: none; border-bottom: 1px solid #ccc; padding-bottom: 24px; border-radius: 0; } .newsletter:last-child { border-bottom: none; } }</style></head><body><div class="print-controls"><button class="print-btn" onclick="window.print()">🖨️ 인쇄하기</button></div><div class="doc-header"><div><div class="doc-title">뉴스레터 모음</div><div class="doc-meta">${dateStr} · 총 ${dayIssues.length}통</div></div></div>${sections}</body></html>`);
   w.document.close();
 }
   function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 function linkify(text) { return text.replace(/(https?:\/\/[^\s<]+)/g, url => `<a href="${url}" target="_blank" rel="noopener">${url}</a>`); }
 formatHeader(); load();
-document.getElementById('print-btn').addEventListener('click', printToday);
+document.getElementById('print-btn').addEventListener('click', openPrintPicker);
 setInterval(load, 5 * 60 * 1000);
 </script>
 </body>
