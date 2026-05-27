@@ -134,21 +134,34 @@ function timeLabel(dateStr) {
 }
 function dateKey(dateStr) { const d = new Date(dateStr); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
 function cleanPreview(text) { if (!text) return ''; return text.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').replace(/[ \t]+/g,' ').replace(/[ \t]+\n/g,'\n').trim().slice(0, 280); }
-function cleanBody(text) { if (!text) return '내용을 표시할 수 없어요.'; return text.replace(/\r/g,'').replace(/\n{4,}/g,'\n\n\n').trim(); }
-async function load() {
-  try {
-    const [{ data: nls, error: e1 }, { data: iss, error: e2 }] = await Promise.all([
-      sb.from('newsletters').select('*').eq('is_active', true).order('name'),
-      sb.from('issues').select('id, newsletter_id, subject, body_text, body_html, received_at').order('received_at', { ascending: false }).limit(200)
-    ]);
-    if (e1 || e2) throw (e1 || e2);
-    newsletters = nls || [];
-    issues = (iss || []).map(i => ({ ...i, newsletter: newsletters.find(n => n.id === i.newsletter_id), is_read: getReadIds().has(i.id) }));
-    renderFilters(); render(); updateStats();
-  } catch (err) {
-    console.error(err);
-    document.getElementById('content').innerHTML = `<div class="state">연결에 문제가 있어요.<div class="state-sub">콘솔(F12)에서 에러 확인하거나 URL/Key 설정을 다시 봐주세요.</div></div>`;
+function cleanBody(text, html) {
+  let result;
+  if (html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    doc.querySelectorAll('script, style, head, meta, link, title, img, button, input, form, [width="1"], [height="1"]').forEach(el => el.remove());
+    // Stibee 추적 링크 제거: 링크 텍스트 자체가 URL인 <a> 태그 통째로 삭제
+    doc.querySelectorAll('a').forEach(a => {
+      const txt = (a.textContent || '').trim();
+      if (/^\[?\s*https?:\/\//.test(txt)) a.remove();
+    });
+    doc.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li, tr').forEach(el => el.insertAdjacentText('beforeend', '\n'));
+    doc.querySelectorAll('br, hr').forEach(el => el.replaceWith(document.createTextNode('\n')));
+    result = doc.body.textContent || '';
+  } else if (text) {
+    result = text;
+  } else {
+    return '내용을 표시할 수 없어요.';
   }
+  return result
+    .replace(/\r/g, '')
+    .replace(/\[\s*https?:\/\/[^\]]+\]/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 function updateStats() {
   const readIds = getReadIds(), todayKey = dateKey(new Date());
