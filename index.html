@@ -344,7 +344,7 @@ function printDate(targetDateKey, format = 'normal') {
     compact:   { fs:11, ss:15, pad:'14px 16px',mg:'12px', pgM:'12mm', cols:'', showBody:true,  lh:1.55, landscape:false, mw:'800px', useText:false, maxLength:0 },
     dense:     { fs:10, ss:13, pad:'10px 12px',mg:'8px',  pgM:'10mm', cols:'column-count:2;column-gap:14px;', showBody:true, lh:1.5, landscape:false, mw:'800px', useText:true, maxLength:2500 },
     headlines: { fs:12, ss:14, pad:'8px 14px', mg:'4px',  pgM:'14mm', cols:'', showBody:false, lh:1.5,  landscape:false, mw:'800px', useText:false, maxLength:0 },
-    extreme:   { fs:9,  ss:11, pad:'0',        mg:'10px', pgM:'5mm',  cols:'column-count:4;column-gap:10px;column-fill:auto;', showBody:true, lh:1.55, landscape:true, mw:'100%', flat:true, useText:true, maxLength:1200 }
+    extreme:   { fs:9,  ss:11, pad:'0',        mg:'10px', pgM:'5mm',  cols:'column-count:4;column-gap:10px;column-fill:auto;', showBody:true, lh:1.55, landscape:true, mw:'100%', flat:true, useText:true, maxLength:0 }
   }[format] || {};
 
   const sections = dayIssues.map(issue => {
